@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2x2 M3U8 Stream Grid</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --text-color: #fff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+        }
+
+        /* The 2x2 Grid Layout — fills whatever is left under the clocks */
+        .grid-container {
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+            width: 100%;
+            gap: 2px; /* Small border between videos */
+        }
+
+        .video-wrapper {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        video {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 0;
+            object-fit: contain;
+        }
+
+        .label {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            max-width: calc(100% - 16px);
+            color: var(--text-color);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 8px;
+            font-family: sans-serif;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .label-title {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .label .download {
+            display: none;
+            flex: 0 0 auto;
+            align-items: center;
+            color: inherit;
+            line-height: 0;
+            text-decoration: none;
+        }
+
+        .label:hover .download {
+            display: flex;
+        }
+
+        .label .download:hover {
+            opacity: 0.7;
+        }
+
+        .grid-container.titles-separate .video-wrapper {
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: flex-start;
+        }
+
+        .grid-container.titles-separate .label {
+            position: static;
+            transform: none;
+            flex: 0 0 auto;
+            max-width: none;
+            width: 100%;
+            padding: 4px 8px;
+            background: #000;
+        }
+
+        .grid-container.titles-separate video {
+            flex: 1 1 auto;
+            width: 100%;
+            height: 0;
+            min-height: 0;
+        }
+
+        .timezone-bar {
+            position: relative;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            min-height: 0;
+            padding: 6px 40px 6px 8px;
+            background: #000;
+            color: var(--text-color);
+            font-family: sans-serif;
+        }
+
+        .menu-btn {
+            position: absolute;
+            top: 50%;
+            right: 6px;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 0;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-color);
+            cursor: pointer;
+        }
+
+        .menu-btn:hover,
+        .menu-btn[aria-expanded="true"] {
+            background: #222;
+            color: var(--text-color);
+        }
+
+        .layout-menu {
+            position: absolute;
+            top: calc(100% - 2px);
+            right: 6px;
+            z-index: 20;
+            min-width: 148px;
+            margin: 0;
+            padding: 4px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #111;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+        }
+
+        .layout-menu[hidden] {
+            display: none;
+        }
+
+        .layout-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            margin: 0;
+            padding: 7px 10px;
+            border: 0;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-color);
+            font-family: sans-serif;
+            font-size: 13px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .layout-menu svg {
+            flex: 0 0 auto;
+        }
+
+        .layout-menu button:hover,
+        .layout-menu button[aria-checked="true"] {
+            background: #2a2a2a;
+            color: var(--text-color);
+        }
+
+        .menu-sep {
+            height: 1px;
+            margin: 4px 6px;
+            background: #333;
+        }
+
+        .menu-label {
+            padding: 6px 10px 2px;
+            color: var(--text-color);
+            font-family: sans-serif;
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .swatch {
+            flex: 0 0 auto;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+        }
+
+        .grid-container.layout-vertical {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: repeat(4, minmax(0, 1fr));
+        }
+
+        .grid-container.layout-horizontal {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-rows: minmax(0, 1fr);
+        }
+
+        .tz-item {
+            flex: 1 1 0;
+            min-width: 0;
+            text-align: center;
+        }
+
+        .tz-name {
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-color);
+            opacity: 0.72;
+        }
+
+        .tz-time {
+            margin-top: 2px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: clamp(16px, 2.6vh, 28px);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timezone-bar.clocks-off {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            z-index: 30;
+            width: auto;
+            padding: 0;
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 4px;
+        }
+
+        .timezone-bar.clocks-off .tz-item {
+            display: none;
+        }
+
+        .timezone-bar.clocks-off .menu-btn {
+            position: static;
+            transform: none;
+        }
+
+        .timezone-bar.clocks-off .layout-menu {
+            top: calc(100% + 4px);
+            right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="timezone-bar">
+        <div class="tz-item">
+            <div class="tz-name">Los Angeles</div>
+            <div class="tz-time" id="tz-la">00:00</div>
+        </div>
+        <div class="tz-item">
+            <div class="tz-name">New York</div>
+            <div class="tz-time" id="tz-ny">00:00</div>
+        </div>
+        <div class="tz-item">
+            <div class="tz-name">London</div>
+            <div class="tz-time" id="tz-lon">00:00</div>
+        </div>
+        <div class="tz-item">
+            <div class="tz-name">Tokyo</div>
+            <div class="tz-time" id="tz-tok">00:00</div>
+        </div>
+        <div class="tz-item">
+            <div class="tz-name">Sydney</div>
+            <div class="tz-time" id="tz-syd">00:00</div>
+        </div>
+        <button type="button" class="menu-btn" id="layout-menu-btn" aria-label="Layout" aria-haspopup="menu" aria-expanded="false" aria-controls="layout-menu">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <path fill="currentColor" d="M1.5 3h13v1.5h-13V3zm0 4.25h13v1.5h-13v-1.5zM1.5 11.5h13V13h-13v-1.5z"/>
+            </svg>
+        </button>
+        <div class="layout-menu" id="layout-menu" role="menu" hidden>
+            <button type="button" role="menuitemradio" data-layout="quad" aria-checked="true">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h6.2v6.2H1V1zm7.8 0H15v6.2H8.8V1zM1 8.8h6.2V15H1V8.8zm7.8 0H15V15H8.8V8.8z"/></svg>
+                Quad
+            </button>
+            <button type="button" role="menuitemradio" data-layout="vertical" aria-checked="false">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h14v2.4H1V1zm0 3.9h14v2.4H1V4.9zm0 3.9h14v2.4H1V8.8zm0 3.8h14V15H1v-2.3z"/></svg>
+                Vertical
+            </button>
+            <button type="button" role="menuitemradio" data-layout="horizontal" aria-checked="false">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h2.4v14H1V1zm3.9 0h2.4v14H4.9V1zm3.9 0h2.4v14H8.8V1zM12.6 1H15v14h-2.4V1z"/></svg>
+                Horizontal
+            </button>
+            <div class="menu-sep"></div>
+            <div class="menu-label">Titles</div>
+            <button type="button" role="menuitemradio" data-titles="overlay" aria-checked="false">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 3.2h14V15H1V3.2zM3 1h10v2.2H3V1z"/></svg>
+                Overlay
+            </button>
+            <button type="button" role="menuitemradio" data-titles="separate" aria-checked="true">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h14v2.2H1V1zM1 5h14v10H1V5z"/></svg>
+                Separate
+            </button>
+            <div class="menu-sep"></div>
+            <div class="menu-label">Text color</div>
+            <button type="button" role="menuitemradio" data-color="red" aria-checked="false">
+                <span class="swatch" style="background:#ff4d4d"></span>
+                Red
+            </button>
+            <button type="button" role="menuitemradio" data-color="green" aria-checked="false">
+                <span class="swatch" style="background:#3dde6d"></span>
+                Green
+            </button>
+            <button type="button" role="menuitemradio" data-color="blue" aria-checked="false">
+                <span class="swatch" style="background:#4da3ff"></span>
+                Blue
+            </button>
+            <button type="button" role="menuitemradio" data-color="orange" aria-checked="false">
+                <span class="swatch" style="background:#ff9f1a"></span>
+                Orange
+            </button>
+            <button type="button" role="menuitemradio" data-color="white" aria-checked="true">
+                <span class="swatch" style="background:#fff"></span>
+                White
+            </button>
+            <div class="menu-sep"></div>
+            <button type="button" role="menuitemcheckbox" id="tz-bar-toggle" aria-checked="true">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 1.25a6.75 6.75 0 1 0 0 13.5A6.75 6.75 0 0 0 8 1.25zm.75 3.1V8.2l2.35 1.4-.75 1.25L7.25 9V4.35h1.5z"/></svg>
+                Timezone bar
+            </button>
+        </div>
+    </div>
+    <div class="grid-container titles-separate">
+        <div class="video-wrapper">
+            <div class="label"></div>
+            <video id="video1" controls muted autoplay></video>
+        </div>
+        <div class="video-wrapper">
+            <div class="label"></div>
+            <video id="video2" controls muted autoplay></video>
+        </div>
+        <div class="video-wrapper">
+            <div class="label"></div>
+            <video id="video3" controls muted autoplay></video>
+        </div>
+        <div class="video-wrapper">
+            <div class="label"></div>
+            <video id="video4" controls muted autoplay></video>
+        </div>
+    </div>
+
+    <script>
+        // Replace these with your actual .m3u8 links and titles
+        const streams = [
+            { title: 'CBS Sports', url: 'https://propee33f9c2.airspace-cdn.cbsivideo.com/index.m3u8' },
+            { title: 'FOX LiveNOW', url: 'https://pb-k5p02dtnr2162.akamaized.net/LiveNOW_from_FOX.m3u8' },
+            { title: 'NBC News', url: 'https://pb-o6czxr182vtiv.akamaized.net/master.m3u8' },
+            { title: 'CBS News', url: 'https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8' }
+            // { title: 'AccuWeather NOW', url: 'https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00684-accuweather-accuweather-plex/playlist.m3u8' }
+            // 
+        ];
+
+        function setupVideo(videoId, stream) {
+            const video = document.getElementById(videoId);
+            const label = video.parentElement.querySelector('.label');
+            if (label) {
+                label.replaceChildren();
+                const title = document.createElement('span');
+                title.className = 'label-title';
+                title.textContent = stream.title;
+                const download = document.createElement('a');
+                download.className = 'download';
+                download.href = stream.url;
+                download.target = '_blank';
+                download.rel = 'noopener noreferrer';
+                download.setAttribute('aria-label', 'Download ' + stream.title);
+                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                icon.setAttribute('viewBox', '0 0 16 16');
+                icon.setAttribute('width', '12');
+                icon.setAttribute('height', '12');
+                icon.setAttribute('aria-hidden', 'true');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('fill', 'currentColor');
+                path.setAttribute('d', 'M7.2 1.25h1.6v5.25h2.5L8 9.8 4.7 6.5h2.5V1.25zM2.15 11.35h1.4v1.8h8.9v-1.8h1.4v3.35h-11.7v-3.35z');
+                icon.append(path);
+                download.append(icon);
+                label.append(title, download);
+            }
+
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(stream.url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } 
+            // Support for Safari (which handles HLS natively)
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = stream.url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            }
+        }
+
+        streams.forEach(function (stream, index) {
+            setupVideo('video' + (index + 1), stream);
+        });
+
+        const clocks = [
+            { id: 'tz-la', timeZone: 'America/Los_Angeles' },
+            { id: 'tz-ny', timeZone: 'America/New_York' },
+            { id: 'tz-lon', timeZone: 'Europe/London' },
+            { id: 'tz-tok', timeZone: 'Asia/Tokyo' },
+            { id: 'tz-syd', timeZone: 'Australia/Sydney' }
+        ].map(function (zone) {
+            return {
+                el: document.getElementById(zone.id),
+                fmt: new Intl.DateTimeFormat('en-GB', {
+                    timeZone: zone.timeZone,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                })
+            };
+        });
+
+        function updateClocks() {
+            const now = new Date();
+            clocks.forEach(function (clock) {
+                clock.el.textContent = clock.fmt.format(now);
+            });
+        }
+
+        updateClocks();
+        setInterval(updateClocks, 1000);
+
+        const grid = document.querySelector('.grid-container');
+        const tzBar = document.querySelector('.timezone-bar');
+        const menuBtn = document.getElementById('layout-menu-btn');
+        const menu = document.getElementById('layout-menu');
+        const layoutButtons = menu.querySelectorAll('[data-layout]');
+        const titleButtons = menu.querySelectorAll('[data-titles]');
+        const colorButtons = menu.querySelectorAll('[data-color]');
+        const tzToggle = document.getElementById('tz-bar-toggle');
+        const layoutKey = 'quad-tv-layout';
+        const titlesKey = 'quad-tv-titles';
+        const colorKey = 'quad-tv-text-color';
+        const clocksKey = 'quad-tv-clocks';
+        const textColors = {
+            red: '#ff4d4d',
+            green: '#3dde6d',
+            blue: '#4da3ff',
+            orange: '#ff9f1a',
+            white: '#ffffff'
+        };
+
+        function setLayout(layout) {
+            grid.classList.remove('layout-vertical', 'layout-horizontal');
+            if (layout === 'vertical') {
+                grid.classList.add('layout-vertical');
+            } else if (layout === 'horizontal') {
+                grid.classList.add('layout-horizontal');
+            } else {
+                layout = 'quad';
+            }
+            layoutButtons.forEach(function (button) {
+                button.setAttribute('aria-checked', button.dataset.layout === layout ? 'true' : 'false');
+            });
+            try {
+                localStorage.setItem(layoutKey, layout);
+            } catch (err) {}
+        }
+
+        function setTitles(mode) {
+            if (mode !== 'separate') mode = 'overlay';
+            grid.classList.toggle('titles-separate', mode === 'separate');
+            titleButtons.forEach(function (button) {
+                button.setAttribute('aria-checked', button.dataset.titles === mode ? 'true' : 'false');
+            });
+            try {
+                localStorage.setItem(titlesKey, mode);
+            } catch (err) {}
+        }
+
+        function setMenuOpen(open) {
+            menu.hidden = !open;
+            menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+
+        menuBtn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            setMenuOpen(menu.hidden);
+        });
+
+        function setTextColor(name) {
+            if (!textColors[name]) name = 'white';
+            document.documentElement.style.setProperty('--text-color', textColors[name]);
+            colorButtons.forEach(function (button) {
+                button.setAttribute('aria-checked', button.dataset.color === name ? 'true' : 'false');
+            });
+            try {
+                localStorage.setItem(colorKey, name);
+            } catch (err) {}
+        }
+
+        function setClocksVisible(visible) {
+            tzBar.classList.toggle('clocks-off', !visible);
+            tzToggle.setAttribute('aria-checked', visible ? 'true' : 'false');
+            try {
+                localStorage.setItem(clocksKey, visible ? 'on' : 'off');
+            } catch (err) {}
+        }
+
+        layoutButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                setLayout(button.dataset.layout);
+                setMenuOpen(false);
+            });
+        });
+
+        titleButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                setTitles(button.dataset.titles);
+                setMenuOpen(false);
+            });
+        });
+
+        colorButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                setTextColor(button.dataset.color);
+                setMenuOpen(false);
+            });
+        });
+
+        tzToggle.addEventListener('click', function () {
+            setClocksVisible(tzBar.classList.contains('clocks-off'));
+            setMenuOpen(false);
+        });
+
+        document.addEventListener('click', function () {
+            if (!menu.hidden) setMenuOpen(false);
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !menu.hidden) setMenuOpen(false);
+        });
+
+        try {
+            const saved = localStorage.getItem(layoutKey);
+            if (saved === 'vertical' || saved === 'horizontal') setLayout(saved);
+            const savedTitles = localStorage.getItem(titlesKey);
+            if (savedTitles === 'overlay') setTitles(savedTitles);
+            const savedColor = localStorage.getItem(colorKey);
+            if (savedColor && textColors[savedColor]) setTextColor(savedColor);
+            if (localStorage.getItem(clocksKey) === 'off') setClocksVisible(false);
+        } catch (err) {}
+    </script>
+</body>
+</html>
