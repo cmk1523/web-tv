@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +15,8 @@
             --text-color: #fff;
         }
 
-        body, html {
+        body,
+        html {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -38,7 +40,8 @@
             grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
             grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
             width: 100%;
-            gap: 2px; /* Small border between videos */
+            gap: 2px;
+            /* Small border between videos */
         }
 
         .video-wrapper {
@@ -168,13 +171,15 @@
             top: calc(100% - 2px);
             right: 6px;
             z-index: 20;
-            min-width: 148px;
+            min-width: 220px;
+            max-height: min(520px, calc(100dvh - 52px));
             margin: 0;
             padding: 4px;
             border: 1px solid #333;
             border-radius: 6px;
             background: #111;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+            overflow: auto;
         }
 
         .layout-menu[hidden] {
@@ -224,22 +229,53 @@
             opacity: 0.7;
         }
 
+        .stream-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            min-height: 32px;
+            padding: 2px 4px 2px 10px;
+            color: var(--text-color);
+            font-family: sans-serif;
+            font-size: 13px;
+        }
+
+        .stream-row-title {
+            flex: 1 1 auto;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .layout-menu .stream-remove {
+            flex: 0 0 auto;
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            justify-content: center;
+            font-size: 16px;
+            line-height: 1;
+            opacity: 0.75;
+        }
+
+        .layout-menu .stream-remove:hover {
+            opacity: 1;
+        }
+
+        .layout-menu button:disabled,
+        .layout-menu button:disabled:hover {
+            background: transparent;
+            color: #6f6f6f;
+            cursor: default;
+        }
+
         .swatch {
             flex: 0 0 auto;
             width: 10px;
             height: 10px;
             border-radius: 50%;
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
-        }
-
-        .grid-container.layout-vertical {
-            grid-template-columns: minmax(0, 1fr);
-            grid-template-rows: repeat(4, minmax(0, 1fr));
-        }
-
-        .grid-container.layout-horizontal {
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            grid-template-rows: minmax(0, 1fr);
         }
 
         .tz-item {
@@ -289,6 +325,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="timezone-bar">
         <div class="tz-item">
@@ -311,32 +348,56 @@
             <div class="tz-name">Sydney</div>
             <div class="tz-time" id="tz-syd">00:00</div>
         </div>
-        <button type="button" class="menu-btn" id="layout-menu-btn" aria-label="Layout" aria-haspopup="menu" aria-expanded="false" aria-controls="layout-menu">
+        <button type="button" class="menu-btn" id="layout-menu-btn" aria-label="Menu" aria-haspopup="menu"
+            aria-expanded="false" aria-controls="layout-menu stream-picker">
             <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                <path fill="currentColor" d="M1.5 3h13v1.5h-13V3zm0 4.25h13v1.5h-13v-1.5zM1.5 11.5h13V13h-13v-1.5z"/>
+                <path fill="currentColor" d="M1.5 3h13v1.5h-13V3zm0 4.25h13v1.5h-13v-1.5zM1.5 11.5h13V13h-13v-1.5z" />
             </svg>
         </button>
         <div class="layout-menu" id="layout-menu" role="menu" hidden>
+            <div class="menu-label">Streams</div>
+            <div id="stream-list"></div>
+            <button type="button" id="add-stream-btn" aria-haspopup="menu" aria-expanded="false"
+                aria-controls="stream-picker">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor" d="M7.25 2h1.5v4.75H14v1.5H8.75V14h-1.5V8.25H2v-1.5h5.25V2z" />
+                </svg>
+                Add stream
+            </button>
+            <div class="menu-sep"></div>
             <button type="button" role="menuitemradio" data-layout="quad" aria-checked="true">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h6.2v6.2H1V1zm7.8 0H15v6.2H8.8V1zM1 8.8h6.2V15H1V8.8zm7.8 0H15V15H8.8V8.8z"/></svg>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M1 1h6.2v6.2H1V1zm7.8 0H15v6.2H8.8V1zM1 8.8h6.2V15H1V8.8zm7.8 0H15V15H8.8V8.8z" />
+                </svg>
                 Quad
             </button>
             <button type="button" role="menuitemradio" data-layout="vertical" aria-checked="false">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h14v2.4H1V1zm0 3.9h14v2.4H1V4.9zm0 3.9h14v2.4H1V8.8zm0 3.8h14V15H1v-2.3z"/></svg>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M1 1h14v2.4H1V1zm0 3.9h14v2.4H1V4.9zm0 3.9h14v2.4H1V8.8zm0 3.8h14V15H1v-2.3z" />
+                </svg>
                 Vertical
             </button>
             <button type="button" role="menuitemradio" data-layout="horizontal" aria-checked="false">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h2.4v14H1V1zm3.9 0h2.4v14H4.9V1zm3.9 0h2.4v14H8.8V1zM12.6 1H15v14h-2.4V1z"/></svg>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M1 1h2.4v14H1V1zm3.9 0h2.4v14H4.9V1zm3.9 0h2.4v14H8.8V1zM12.6 1H15v14h-2.4V1z" />
+                </svg>
                 Horizontal
             </button>
             <div class="menu-sep"></div>
             <div class="menu-label">Titles</div>
             <button type="button" role="menuitemradio" data-titles="overlay" aria-checked="false">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 3.2h14V15H1V3.2zM3 1h10v2.2H3V1z"/></svg>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor" d="M1 3.2h14V15H1V3.2zM3 1h10v2.2H3V1z" />
+                </svg>
                 Overlay
             </button>
             <button type="button" role="menuitemradio" data-titles="separate" aria-checked="true">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1 1h14v2.2H1V1zM1 5h14v10H1V5z"/></svg>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor" d="M1 1h14v2.2H1V1zM1 5h14v10H1V5z" />
+                </svg>
                 Separate
             </button>
             <div class="menu-sep"></div>
@@ -363,88 +424,125 @@
             </button>
             <div class="menu-sep"></div>
             <button type="button" role="menuitemcheckbox" id="tz-bar-toggle" aria-checked="true">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 1.25a6.75 6.75 0 1 0 0 13.5A6.75 6.75 0 0 0 8 1.25zm.75 3.1V8.2l2.35 1.4-.75 1.25L7.25 9V4.35h1.5z"/></svg>
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor"
+                        d="M8 1.25a6.75 6.75 0 1 0 0 13.5A6.75 6.75 0 0 0 8 1.25zm.75 3.1V8.2l2.35 1.4-.75 1.25L7.25 9V4.35h1.5z" />
+                </svg>
                 Timezone bar
             </button>
         </div>
-    </div>
-    <div class="grid-container titles-separate">
-        <div class="video-wrapper">
-            <div class="label"></div>
-            <video id="video1" controls muted autoplay></video>
-        </div>
-        <div class="video-wrapper">
-            <div class="label"></div>
-            <video id="video2" controls muted autoplay></video>
-        </div>
-        <div class="video-wrapper">
-            <div class="label"></div>
-            <video id="video3" controls muted autoplay></video>
-        </div>
-        <div class="video-wrapper">
-            <div class="label"></div>
-            <video id="video4" controls muted autoplay></video>
+        <div class="layout-menu" id="stream-picker" role="menu" hidden>
+            <button type="button" id="stream-picker-back">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                    <path fill="currentColor" d="M11 2.8 5.8 8 11 13.2l-1.2 1.2L3.4 8l6.4-6.4z" />
+                </svg>
+                Back
+            </button>
+            <div class="menu-sep"></div>
+            <div class="menu-label">Add stream</div>
+            <div id="stream-picker-list"></div>
         </div>
     </div>
+    <div class="grid-container titles-separate"></div>
 
     <script>
-        // Replace these with your actual .m3u8 links and titles
+        // Master list. enabled controls whether the stream is on the grid.
         const streams = [
-            { title: 'CBS Sports', url: 'https://propee33f9c2.airspace-cdn.cbsivideo.com/index.m3u8' },
-            { title: 'FOX LiveNOW', url: 'https://pb-k5p02dtnr2162.akamaized.net/LiveNOW_from_FOX.m3u8' },
-            { title: 'NBC News', url: 'https://pb-o6czxr182vtiv.akamaized.net/master.m3u8' },
-            { title: 'CBS News', url: 'https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8' }
-            // { title: 'AccuWeather NOW', url: 'https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00684-accuweather-accuweather-plex/playlist.m3u8' }
-            // 
+            { enabled: false, title: 'CBS Sports', url: 'https://propee33f9c2.airspace-cdn.cbsivideo.com/index.m3u8' },
+            { enabled: false, title: 'NBC News', url: 'https://pb-o6czxr182vtiv.akamaized.net/master.m3u8' },
+            { enabled: true, title: 'CBS News', url: 'https://cbsn-us.cbsnstream.cbsnews.com/out/v1/55a8648e8f134e82a470f83d562deeca/master.m3u8' },
+            { enabled: true, title: 'FOX LiveNOW', url: 'https://pb-k5p02dtnr2162.akamaized.net/LiveNOW_from_FOX.m3u8' },
+            { enabled: true, title: 'BBC News', url: 'http://23.237.104.106:8080/USA_BBC_NEWS/index.m3u8' },
+            { enabled: true, title: 'CNN International', url: 'https://d2sybdl23b9psq.cloudfront.net/v1/master/3722c60a815c199d9c0ef36c5b73da68a62b09d1/cc-bocx3i7bjz0dg/CNNFAST_GB.m3u8' },
+            { enabled: true, title: 'Fox News International', url: 'http://103.253.74.210:7070/stream/124/index.m3u8' },
+            { enabled: false, title: 'AccuWeather NOW', url: 'https://cdn-ue1-prod.tsv2.amagi.tv/linear/amg00684-accuweather-accuweather-plex/playlist.m3u8' }
         ];
 
-        function setupVideo(videoId, stream) {
-            const video = document.getElementById(videoId);
-            const label = video.parentElement.querySelector('.label');
-            if (label) {
-                label.replaceChildren();
-                const title = document.createElement('span');
-                title.className = 'label-title';
-                title.textContent = stream.title;
-                const download = document.createElement('a');
-                download.className = 'download';
-                download.href = stream.url;
-                download.target = '_blank';
-                download.rel = 'noopener noreferrer';
-                download.setAttribute('aria-label', 'Download ' + stream.title);
-                const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                icon.setAttribute('viewBox', '0 0 16 16');
-                icon.setAttribute('width', '12');
-                icon.setAttribute('height', '12');
-                icon.setAttribute('aria-hidden', 'true');
-                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                path.setAttribute('fill', 'currentColor');
-                path.setAttribute('d', 'M7.2 1.25h1.6v5.25h2.5L8 9.8 4.7 6.5h2.5V1.25zM2.15 11.35h1.4v1.8h8.9v-1.8h1.4v3.35h-11.7v-3.35z');
-                icon.append(path);
-                download.append(icon);
-                label.append(title, download);
+        const slots = [];
+
+        function fillLabel(label, stream) {
+            label.replaceChildren();
+            const title = document.createElement('span');
+            title.className = 'label-title';
+            title.textContent = stream.title;
+            const download = document.createElement('a');
+            download.className = 'download';
+            download.href = stream.url;
+            download.target = '_blank';
+            download.rel = 'noopener noreferrer';
+            download.setAttribute('aria-label', 'Download ' + stream.title);
+            const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            icon.setAttribute('viewBox', '0 0 16 16');
+            icon.setAttribute('width', '12');
+            icon.setAttribute('height', '12');
+            icon.setAttribute('aria-hidden', 'true');
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('fill', 'currentColor');
+            path.setAttribute('d', 'M7.2 1.25h1.6v5.25h2.5L8 9.8 4.7 6.5h2.5V1.25zM2.15 11.35h1.4v1.8h8.9v-1.8h1.4v3.35h-11.7v-3.35z');
+            icon.append(path);
+            download.append(icon);
+            label.append(title, download);
+        }
+
+        function mountStream(stream) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'video-wrapper';
+            const label = document.createElement('div');
+            label.className = 'label';
+            const video = document.createElement('video');
+            video.controls = true;
+            video.muted = true;
+            video.autoplay = true;
+            wrapper.append(label, video);
+            fillLabel(label, stream);
+
+            const slot = { stream: stream, wrapper: wrapper, video: video, hls: null };
+            const index = streams.filter(function (item) { return item.enabled; }).indexOf(stream);
+            const next = slots[index];
+            if (next) {
+                grid.insertBefore(wrapper, next.wrapper);
+                slots.splice(index, 0, slot);
+            } else {
+                grid.append(wrapper);
+                slots.push(slot);
             }
 
             if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(stream.url);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                slot.hls = new Hls();
+                slot.hls.loadSource(stream.url);
+                slot.hls.attachMedia(video);
+                slot.hls.on(Hls.Events.MANIFEST_PARSED, function () {
                     video.play();
                 });
-            } 
-            // Support for Safari (which handles HLS natively)
-            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = stream.url;
-                video.addEventListener('loadedmetadata', function() {
+                video.addEventListener('loadedmetadata', function () {
                     video.play();
                 });
             }
         }
 
-        streams.forEach(function (stream, index) {
-            setupVideo('video' + (index + 1), stream);
-        });
+        function removeSlot(index) {
+            const slot = slots[index];
+            if (!slot) return;
+            slot.stream.enabled = false;
+            if (slot.hls) slot.hls.destroy();
+            slot.video.pause();
+            slot.video.removeAttribute('src');
+            slot.video.load();
+            slot.wrapper.remove();
+            slots.splice(index, 1);
+            applyGrid();
+            renderStreamMenu();
+        }
+
+        function addStream(stream) {
+            if (stream.enabled) return;
+            stream.enabled = true;
+            mountStream(stream);
+            applyGrid();
+            renderStreamMenu();
+        }
 
         const clocks = [
             { id: 'tz-la', timeZone: 'America/Los_Angeles' },
@@ -482,6 +580,11 @@
         const titleButtons = menu.querySelectorAll('[data-titles]');
         const colorButtons = menu.querySelectorAll('[data-color]');
         const tzToggle = document.getElementById('tz-bar-toggle');
+        const streamList = document.getElementById('stream-list');
+        const addStreamBtn = document.getElementById('add-stream-btn');
+        const picker = document.getElementById('stream-picker');
+        const pickerList = document.getElementById('stream-picker-list');
+        const pickerBack = document.getElementById('stream-picker-back');
         const layoutKey = 'quad-tv-layout';
         const titlesKey = 'quad-tv-titles';
         const colorKey = 'quad-tv-text-color';
@@ -493,22 +596,95 @@
             orange: '#ff9f1a',
             white: '#ffffff'
         };
+        let currentLayout = 'quad';
+
+        function applyGrid() {
+            const count = slots.length;
+            if (count === 0) {
+                grid.style.gridTemplateColumns = 'minmax(0, 1fr)';
+                grid.style.gridTemplateRows = 'minmax(0, 1fr)';
+                return;
+            }
+            if (currentLayout === 'vertical') {
+                grid.style.gridTemplateColumns = 'minmax(0, 1fr)';
+                grid.style.gridTemplateRows = 'repeat(' + count + ', minmax(0, 1fr))';
+            } else if (currentLayout === 'horizontal') {
+                grid.style.gridTemplateColumns = 'repeat(' + count + ', minmax(0, 1fr))';
+                grid.style.gridTemplateRows = 'minmax(0, 1fr)';
+            } else {
+                const cols = count < 2 ? 1 : 2;
+                const rows = Math.ceil(count / cols);
+                grid.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+                grid.style.gridTemplateRows = 'repeat(' + rows + ', minmax(0, 1fr))';
+            }
+        }
+
+        function renderStreamMenu() {
+            streamList.replaceChildren();
+            slots.forEach(function (slot, index) {
+                const row = document.createElement('div');
+                row.className = 'stream-row';
+                const title = document.createElement('span');
+                title.className = 'stream-row-title';
+                title.textContent = slot.stream.title;
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'stream-remove';
+                remove.setAttribute('aria-label', 'Remove ' + slot.stream.title);
+                remove.textContent = '×';
+                remove.addEventListener('click', function () {
+                    removeSlot(index);
+                });
+                row.append(title, remove);
+                streamList.append(row);
+            });
+        }
+
+        function renderPicker() {
+            pickerList.replaceChildren();
+            streams.forEach(function (stream) {
+                const added = stream.enabled;
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.setAttribute('role', 'menuitem');
+                button.textContent = stream.title;
+                if (added) {
+                    button.disabled = true;
+                    button.setAttribute('aria-label', stream.title + ', already added');
+                } else {
+                    button.addEventListener('click', function () {
+                        addStream(stream);
+                        closePicker();
+                    });
+                }
+                pickerList.append(button);
+            });
+        }
+
+        function closePicker() {
+            picker.hidden = true;
+            menu.hidden = false;
+            addStreamBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        function openPicker() {
+            renderPicker();
+            menu.hidden = true;
+            picker.hidden = false;
+            menuBtn.setAttribute('aria-expanded', 'true');
+            addStreamBtn.setAttribute('aria-expanded', 'true');
+        }
 
         function setLayout(layout) {
-            grid.classList.remove('layout-vertical', 'layout-horizontal');
-            if (layout === 'vertical') {
-                grid.classList.add('layout-vertical');
-            } else if (layout === 'horizontal') {
-                grid.classList.add('layout-horizontal');
-            } else {
-                layout = 'quad';
-            }
+            if (layout !== 'vertical' && layout !== 'horizontal') layout = 'quad';
+            currentLayout = layout;
+            applyGrid();
             layoutButtons.forEach(function (button) {
                 button.setAttribute('aria-checked', button.dataset.layout === layout ? 'true' : 'false');
             });
             try {
                 localStorage.setItem(layoutKey, layout);
-            } catch (err) {}
+            } catch (err) { }
         }
 
         function setTitles(mode) {
@@ -519,17 +695,39 @@
             });
             try {
                 localStorage.setItem(titlesKey, mode);
-            } catch (err) {}
+            } catch (err) { }
         }
 
         function setMenuOpen(open) {
+            picker.hidden = true;
             menu.hidden = !open;
             menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            addStreamBtn.setAttribute('aria-expanded', 'false');
+        }
+
+        function menuIsOpen() {
+            return !menu.hidden || !picker.hidden;
         }
 
         menuBtn.addEventListener('click', function (event) {
             event.stopPropagation();
-            setMenuOpen(menu.hidden);
+            setMenuOpen(!menuIsOpen());
+        });
+
+        menu.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+
+        picker.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+
+        addStreamBtn.addEventListener('click', function () {
+            openPicker();
+        });
+
+        pickerBack.addEventListener('click', function () {
+            closePicker();
         });
 
         function setTextColor(name) {
@@ -540,7 +738,7 @@
             });
             try {
                 localStorage.setItem(colorKey, name);
-            } catch (err) {}
+            } catch (err) { }
         }
 
         function setClocksVisible(visible) {
@@ -548,7 +746,7 @@
             tzToggle.setAttribute('aria-checked', visible ? 'true' : 'false');
             try {
                 localStorage.setItem(clocksKey, visible ? 'on' : 'off');
-            } catch (err) {}
+            } catch (err) { }
         }
 
         layoutButtons.forEach(function (button) {
@@ -578,12 +776,23 @@
         });
 
         document.addEventListener('click', function () {
-            if (!menu.hidden) setMenuOpen(false);
+            if (menuIsOpen()) setMenuOpen(false);
         });
 
         document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && !menu.hidden) setMenuOpen(false);
+            if (event.key !== 'Escape' || !menuIsOpen()) return;
+            if (!picker.hidden) {
+                closePicker();
+                return;
+            }
+            setMenuOpen(false);
         });
+
+        streams.forEach(function (stream) {
+            if (stream.enabled) mountStream(stream);
+        });
+        applyGrid();
+        renderStreamMenu();
 
         try {
             const saved = localStorage.getItem(layoutKey);
@@ -593,7 +802,8 @@
             const savedColor = localStorage.getItem(colorKey);
             if (savedColor && textColors[savedColor]) setTextColor(savedColor);
             if (localStorage.getItem(clocksKey) === 'off') setClocksVisible(false);
-        } catch (err) {}
+        } catch (err) { }
     </script>
 </body>
+
 </html>
